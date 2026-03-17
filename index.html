@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kámen, nůžky, papír</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f7f7ff, #e8f0ff);
+      text-align: center;
+      padding: 40px 20px;
+      margin: 0;
+    }
+
+    .game-box {
+      max-width: 560px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    p.subtitle {
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 25px;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      background: #4f7cff;
+      color: white;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      opacity: 0.95;
+    }
+
+    button.reset {
+      background: #777;
+      margin-top: 15px;
+    }
+
+    .panel {
+      background: #f6f8fc;
+      border-radius: 14px;
+      padding: 18px;
+      margin-top: 15px;
+    }
+
+    .result {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #222;
+    }
+
+    .message {
+      margin-top: 12px;
+      font-size: 18px;
+      color: #444;
+      min-height: 28px;
+    }
+
+    .score {
+      margin-top: 18px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #1f3f8f;
+    }
+
+    .choices {
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-box">
+    <h1>🪨 ✂️ 📄 Kámen, nůžky, papír</h1>
+    <p class="subtitle">Vyber si tah a zkus porazit počítač.</p>
+
+    <div class="buttons">
+      <button onclick="playGame('kámen')">🪨 Kámen</button>
+      <button onclick="playGame('nůžky')">✂️ Nůžky</button>
+      <button onclick="playGame('papír')">📄 Papír</button>
+    </div>
+
+    <div class="panel">
+      <div class="choices" id="choices">Ty: - | Počítač: -</div>
+      <div class="result" id="result">Začni hru</div>
+      <div class="message" id="message"></div>
+      <div class="score" id="score">Skóre — Ty: 0 | Počítač: 0</div>
+    </div>
+
+    <button class="reset" onclick="resetGame()">Reset skóre</button>
+  </div>
+
+  <script>
+    let playerScore = 0;
+    let computerScore = 0;
+    let audioContext;
+
+    function getComputerChoice() {
+      const options = ['kámen', 'nůžky', 'papír'];
+      const randomIndex = Math.floor(Math.random() * options.length);
+      return options[randomIndex];
+    }
+
+    function playGame(playerChoice) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      const computerChoice = getComputerChoice();
+      let resultText = '';
+      let messageText = '';
+
+      if (playerChoice === computerChoice) {
+        resultText = 'Remíza!';
+        messageText = 'Tak to bylo těsné 😄';
+        playDrawSound();
+      } else if (
+        (playerChoice === 'kámen' && computerChoice === 'nůžky') ||
+        (playerChoice === 'nůžky' && computerChoice === 'papír') ||
+        (playerChoice === 'papír' && computerChoice === 'kámen')
+      ) {
+        playerScore++;
+        resultText = 'Vyhrál/a jsi!';
+        messageText = 'Teď jsi vyhrál/a ty, ale příště to budu já 😛';
+        playVictoryFanfare();
+      } else {
+        computerScore++;
+        resultText = 'Vyhrál počítač!';
+        messageText = 'Ha! Tentokrát jsem byl lepší 😎';
+        playLoseSound();
+      }
+
+      document.getElementById('choices').innerHTML =
+        `Ty: <strong>${playerChoice}</strong> | Počítač: <strong>${computerChoice}</strong>`;
+
+      document.getElementById('result').textContent = resultText;
+      document.getElementById('message').textContent = messageText;
+      document.getElementById('score').textContent =
+        `Skóre — Ty: ${playerScore} | Počítač: ${computerScore}`;
+    }
+
+    function resetGame() {
+      playerScore = 0;
+      computerScore = 0;
+      document.getElementById('choices').textContent = 'Ty: - | Počítač: -';
+      document.getElementById('result').textContent = 'Začni hru';
+      document.getElementById('message').textContent = '';
+      document.getElementById('score').textContent = 'Skóre — Ty: 0 | Počítač: 0';
+    }
+
+    function playTone(freq, start, duration, volume = 0.06) {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(freq, start);
+
+      gainNode.gain.setValueAtTime(0, start);
+      gainNode.gain.linearRampToValueAtTime(volume, start + 0.01);
+      gainNode.gain.linearRampToValueAtTime(0, start + duration);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.start(start);
+      oscillator.stop(start + duration);
+    }
+
+    function playVictoryFanfare() {
+      const now = audioContext.currentTime;
+      playTone(523.25, now, 0.18);        // C5
+      playTone(659.25, now + 0.18, 0.18); // E5
+      playTone(783.99, now + 0.36, 0.22); // G5
+      playTone(1046.50, now + 0.58, 0.35);// C6
+    }
+
+    function playLoseSound() {
+      const now = audioContext.currentTime;
+      playTone(392.00, now, 0.18, 0.05);
+      playTone(329.63, now + 0.18, 0.22, 0.05);
+      playTone(261.63, now + 0.40, 0.30, 0.05);
+    }
+
+    function playDrawSound() {
+      const now = audioContext.currentTime;
+      playTone(440.00, now, 0.12, 0.04);
+      playTone(440.00, now + 0.15, 0.12, 0.04);
+    }
+  </script>
+</body>
+</html>
